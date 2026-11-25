@@ -2,44 +2,38 @@ import { session, shell, WebContentsView } from "electron";
 import {
   AppError,
   ErrorCodes,
-  isSameOriginUrl,
   normalizeUrl,
   sanitizeBounds
 } from "./validation.mjs";
+import { sanitizePageText } from "./page-sanitizer.mjs";
 
 const PAGE_CAPTURE_SCRIPT = `(() => {
-  const privateUsePattern = /[\\uE000-\\uF8FF]/g;
+  const sanitizePageText = ${sanitizePageText.toString()};
   const rawText = document.body?.innerText ?? "";
-  const privateUseCharacterCount =
-    (rawText.match(privateUsePattern) ?? []).length;
-  const text = rawText
-    .replace(/\\u00a0/g, " ")
-    .replace(/[ \\t]+/g, " ")
-    .replace(/\\n{3,}/g, "\\n\\n")
-    .trim()
-    .replace(privateUsePattern, "�");
+  const sanitizedPage = sanitizePageText(rawText);
 
   const metaDescription =
     document.querySelector('meta[name="description"]')?.getAttribute("content") ??
     document.querySelector('meta[property="og:description"]')?.getAttribute("content") ??
     "";
+  const sanitizedDescription = sanitizePageText(metaDescription);
+  const sanitizedTitle = sanitizePageText(document.title);
 
   const salaryNode = document.querySelector(".salary");
-  const salaryText = (salaryNode?.textContent ?? "")
-    .replace(/\\s+/g, " ")
-    .replace(privateUsePattern, "�")
-    .trim();
+  const sanitizedSalary = sanitizePageText(salaryNode?.textContent ?? "");
   const salaryObfuscated =
-    privateUseCharacterCount > 0 ||
+    sanitizedSalary.salaryObfuscated ||
+    sanitizedSalary.privateUseCharacterCount > 0 ||
     Boolean(salaryNode?.querySelector(".zp-hide-salary"));
+  const salaryText = salaryObfuscated ? "" : sanitizedSalary.text;
 
   return {
-    title: document.title.trim(),
+    title: sanitizedTitle.text,
     url: window.location.href,
-    description: metaDescription.trim(),
-    text: text.slice(0, 50000),
-    characterCount: text.length,
-    privateUseCharacterCount,
+    description: sanitizedDescription.text,
+    text: sanitizedPage.text.slice(0, 50000),
+    characterCount: sanitizedPage.text.length,
+    privateUseCharacterCount: sanitizedPage.privateUseCharacterCount,
     salaryText: salaryText.slice(0, 200),
     salaryObfuscated,
     capturedAt: new Date().toISOString()
@@ -107,24 +101,22 @@ export class BrowserController {
     );
 
     contents.setWindowOpenHandler(({ url }) => {
-      if (isSameOriginUrl(url, contents.getURL())) {
+      try {
+        normalizeUrl(url);
         void contents.loadURL(url).catch(() => {
           this.emitNavigationState({
             isLoading: false,
             title: "页面加载失败",
-            error: "无法在内嵌浏览器中打开该岗位链接。",
+            error: "无法在内嵌浏览器中打开该链接。",
             url
           });
         });
 
         return { action: "deny" };
-      }
-
-      try {
-        normalizeUrl(url);
-        void shell.openExternal(url);
       } catch {
-        // Ignore unsupported popup protocols.
+        if (url.startsWith("mailto:")) {
+          void shell.openExternal(url);
+        }
       }
 
       return { action: "deny" };

@@ -250,8 +250,7 @@ function App() {
 
           {capturedPage ? (
             <div className="capture-result">
-              {capturedPage.salaryObfuscated ||
-              capturedPage.privateUseCharacterCount > 0 ? (
+              {capturedPage.salaryObfuscated ? (
                 <div className="alert alert-warning">
                   页面使用了防抓取字符或 SVG 渲染数字，当前薪资无法可靠读取。预览中的异常字符已替换，请在内嵌页面中人工确认薪资。
                 </div>

@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import {
   AppError,
   ErrorCodes,
-  isSameOriginUrl,
   normalizeUrl,
   sanitizeBounds,
   toPublicError
 } from "./validation.mjs";
 import fs from "node:fs";
+import { sanitizePageText } from "./page-sanitizer.mjs";
 
 test("normalizeUrl adds HTTPS to a bare host", () => {
   assert.equal(normalizeUrl("example.com/jobs"), "https://example.com/jobs");
@@ -64,23 +64,6 @@ test("sanitizeBounds rejects invalid dimensions", () => {
   );
 });
 
-test("isSameOriginUrl keeps recruitment links inside the app", () => {
-  assert.equal(
-    isSameOriginUrl(
-      "https://www.zhipin.com/job_detail/example.html",
-      "https://www.zhipin.com/web/geek/job"
-    ),
-    true
-  );
-  assert.equal(
-    isSameOriginUrl(
-      "https://example.com/job_detail/example.html",
-      "https://www.zhipin.com/web/geek/job"
-    ),
-    false
-  );
-});
-
 test("toPublicError does not expose internal error messages", () => {
   assert.deepEqual(toPublicError(new Error("secret path")), {
     code: ErrorCodes.INTERNAL_ERROR,
@@ -104,4 +87,23 @@ test("sandboxed preload channel names match the shared contract", () => {
       `Preload is missing channel ${channel}`
     );
   }
+});
+
+test("sanitizePageText removes private-use salary glyphs", () => {
+  const result = sanitizePageText("岗位：前端\n-K·薪\n地点：深圳");
+
+  assert.equal(result.privateUseCharacterCount, 6);
+  assert.equal(result.salaryObfuscated, true);
+  assert.equal(result.text.includes(""), false);
+  assert.match(result.text, /薪资：页面使用防抓取字符，需人工确认/);
+});
+
+test("sanitizePageText keeps ordinary visible text", () => {
+  const result = sanitizePageText("35-65K·16薪\n深圳");
+
+  assert.deepEqual(result, {
+    text: "35-65K·16薪\n深圳",
+    privateUseCharacterCount: 0,
+    salaryObfuscated: false
+  });
 });

@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "tsc --noEmit && vite build",
+    "test": "node --test electron/validation.test.mjs",
+    "check": "npm run test && npm run build && node scripts/smoke.mjs",
     "smoke": "npm run build && node scripts/smoke.mjs",
     "start": "electron .",
     "typecheck": "tsc --noEmit"

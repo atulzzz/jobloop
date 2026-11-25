@@ -13,6 +13,14 @@ const EMPTY_STATE: NavigationState = {
   canGoForward: false
 };
 
+function unwrap<T>(result: IpcResult<T>): T {
+  if (!result.ok) {
+    throw new Error(result.error.message);
+  }
+
+  return result.data;
+}
+
 function formatTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
     hour: "2-digit",
@@ -27,6 +35,7 @@ function App() {
   const [capturedPage, setCapturedPage] = useState<CapturedPage | null>(null);
   const [captureError, setCaptureError] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const browserSlotRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,10 +44,17 @@ function App() {
       setAddress(state.url || "");
     });
 
-    void window.jobloop.browser.getState().then((state) => {
-      if (state) {
-        setNavigation(state);
-        setAddress(state.url);
+    void Promise.all([
+      window.jobloop.app.getInfo(),
+      window.jobloop.browser.getState()
+    ]).then(([infoResult, stateResult]) => {
+      if (infoResult.ok) {
+        setAppInfo(infoResult.data);
+      }
+
+      if (stateResult.ok) {
+        setNavigation(stateResult.data);
+        setAddress(stateResult.data.url);
       }
     });
 
@@ -78,7 +94,7 @@ function App() {
     event.preventDefault();
 
     try {
-      await window.jobloop.browser.navigate(address);
+      unwrap(await window.jobloop.browser.navigate(address));
     } catch (error) {
       setCaptureError(
         error instanceof Error ? error.message : "无法打开该网址。"
@@ -92,7 +108,7 @@ function App() {
     setCapturedPage(null);
 
     try {
-      const page = await window.jobloop.browser.capture();
+      const page = unwrap(await window.jobloop.browser.capture());
       setCapturedPage(page);
     } catch (error) {
       setCaptureError(
@@ -103,6 +119,21 @@ function App() {
     }
   }
 
+  async function handleBrowserAction(
+    action: () => Promise<IpcResult<NavigationState>>
+  ) {
+    try {
+      const state = unwrap(await action());
+      setNavigation(state);
+      setAddress(state.url);
+      setCaptureError("");
+    } catch (error) {
+      setCaptureError(
+        error instanceof Error ? error.message : "浏览器操作失败。"
+      );
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -110,7 +141,7 @@ function App() {
           <span className="brand-mark">JL</span>
           <div>
             <strong>JobLoop</strong>
-            <span>D1 Feasibility</span>
+            <span>D2 · IPC hardened</span>
           </div>
         </div>
 
@@ -120,7 +151,9 @@ function App() {
             type="button"
             aria-label="后退"
             disabled={!navigation.canGoBack}
-            onClick={() => void window.jobloop.browser.goBack()}
+            onClick={() =>
+              void handleBrowserAction(window.jobloop.browser.goBack)
+            }
           >
             ←
           </button>
@@ -129,7 +162,9 @@ function App() {
             type="button"
             aria-label="前进"
             disabled={!navigation.canGoForward}
-            onClick={() => void window.jobloop.browser.goForward()}
+            onClick={() =>
+              void handleBrowserAction(window.jobloop.browser.goForward)
+            }
           >
             →
           </button>
@@ -137,7 +172,9 @@ function App() {
             className="icon-button"
             type="button"
             aria-label="刷新"
-            onClick={() => void window.jobloop.browser.reload()}
+            onClick={() =>
+              void handleBrowserAction(window.jobloop.browser.reload)
+            }
           >
             ↻
           </button>
@@ -161,7 +198,7 @@ function App() {
 
         <div className="mode-pill">
           <span />
-          User-guided browser
+          IPC linked
         </div>
       </header>
 
@@ -253,13 +290,32 @@ function App() {
           )}
 
           <section className="boundary-card">
-            <p className="eyebrow">D1 SECURITY BOUNDARY</p>
+            <p className="eyebrow">D2 IPC BOUNDARY</p>
             <ul>
               <li>招聘网站不能访问 Node.js、本地文件或数据库</li>
               <li>登录态保存在独立持久化 Chromium Session</li>
               <li>主界面只能调用有限、语义明确的浏览器 IPC</li>
               <li>当前版本不会点击、填写或发送招聘消息</li>
             </ul>
+
+            <div className="runtime-card">
+              <div>
+                <span>Electron</span>
+                <strong>{appInfo?.electronVersion ?? "连接中"}</strong>
+              </div>
+              <div>
+                <span>IPC protocol</span>
+                <strong>
+                  {appInfo ? `v${appInfo.ipcProtocolVersion}` : "连接中"}
+                </strong>
+              </div>
+              <div>
+                <span>Session</span>
+                <strong title={appInfo?.sessionPartition}>
+                  {appInfo ? "Persistent" : "连接中"}
+                </strong>
+              </div>
+            </div>
           </section>
         </aside>
       </main>

@@ -9,11 +9,34 @@ type NavigationState = {
   error?: string;
 };
 
+type IpcSuccess<T> = {
+  ok: true;
+  data: T;
+};
+
+type IpcFailure = {
+  ok: false;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+type IpcResult<T> = IpcSuccess<T> | IpcFailure;
+
 type BrowserBounds = {
   x: number;
   y: number;
   width: number;
   height: number;
+};
+
+type AppInfo = {
+  appVersion: string;
+  electronVersion: string;
+  platform: string;
+  sessionPartition: string;
+  ipcProtocolVersion: number;
 };
 
 type CapturedPage = {
@@ -27,14 +50,19 @@ type CapturedPage = {
 
 interface Window {
   jobloop: {
+    app: {
+      getInfo: () => Promise<IpcResult<AppInfo>>;
+    };
     browser: {
-      getState: () => Promise<NavigationState | null>;
-      navigate: (url: string) => Promise<{ ok: boolean; url: string }>;
-      goBack: () => Promise<void>;
-      goForward: () => Promise<void>;
-      reload: () => Promise<void>;
-      capture: () => Promise<CapturedPage>;
-      setBounds: (bounds: BrowserBounds) => Promise<void>;
+      getState: () => Promise<IpcResult<NavigationState>>;
+      navigate: (url: string) => Promise<IpcResult<{ url: string }>>;
+      goBack: () => Promise<IpcResult<NavigationState>>;
+      goForward: () => Promise<IpcResult<NavigationState>>;
+      reload: () => Promise<IpcResult<NavigationState>>;
+      capture: () => Promise<IpcResult<CapturedPage>>;
+      setBounds: (
+        bounds: BrowserBounds
+      ) => Promise<IpcResult<BrowserBounds & { url: string }>>;
       onNavigationState: (
         callback: (state: NavigationState) => void
       ) => () => void;

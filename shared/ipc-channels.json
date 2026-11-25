@@ -1,0 +1,11 @@
+{
+  "appInfo": "app:info",
+  "browserGetState": "browser:get-state",
+  "browserNavigate": "browser:navigate",
+  "browserBack": "browser:back",
+  "browserForward": "browser:forward",
+  "browserReload": "browser:reload",
+  "browserCapture": "browser:capture",
+  "browserSetBounds": "browser:set-bounds",
+  "browserNavigationState": "browser:navigation-state"
+}

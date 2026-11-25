@@ -516,6 +516,38 @@ button {
   content: "";
 }
 
+.runtime-card {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.runtime-card > div {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  padding: 9px;
+  border: 1px solid #dad8ce;
+  border-radius: 9px;
+  background: rgba(255, 253, 248, 0.72);
+}
+
+.runtime-card span {
+  color: #8b8f84;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.runtime-card strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

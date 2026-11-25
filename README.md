@@ -43,6 +43,7 @@ JobLoop 不是自动投递机器人，也不是只负责聊天的求职助手。
 
 ## 文档
 
+- [项目协作约束](AGENTS.md)
 - [开发计划](PLAN.md)
 - [D1 技术验证](docs/D1.md)
 - [D2 IPC 加固](docs/D2.md)

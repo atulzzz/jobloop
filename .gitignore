@@ -19,5 +19,6 @@ test-results/
 Thumbs.db
 
 user-data/
+.tmp/
 recordings/
 screenshots/

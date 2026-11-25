@@ -8,7 +8,7 @@ JobLoop 的目标是把求职过程串成一条可持续使用的闭环：
 简历 → 岗位采集 → 匹配评估 → 打招呼 → 投递跟踪 → 面试准备
 ```
 
-当前状态：规划完成，等待第一个开发切片。
+当前状态：D1 技术验证已完成，下一步进入 D2 应用外壳。
 
 ## 产品定位
 
@@ -44,7 +44,15 @@ JobLoop 不是自动投递机器人，也不是只负责聊天的求职助手。
 ## 文档
 
 - [开发计划](PLAN.md)
+- [D1 技术验证](docs/D1.md)
 - [技术架构](docs/ARCHITECTURE.md)
 - [数据模型](docs/DATA_MODEL.md)
 - [关键设计决策](docs/DECISIONS.md)
 - [验收标准](docs/ACCEPTANCE.md)
+
+## 运行
+
+```powershell
+npm install
+npm run dev
+```

@@ -363,6 +363,12 @@ button {
   background: #fbebe7;
 }
 
+.alert-warning {
+  color: #73551f;
+  border: 1px solid #e2cf9e;
+  background: #faf3df;
+}
+
 .inline-error {
   margin: 10px 0 0;
   padding: 8px 10px;

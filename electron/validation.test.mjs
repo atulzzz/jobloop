@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   AppError,
   ErrorCodes,
+  isSameOriginUrl,
   normalizeUrl,
   sanitizeBounds,
   toPublicError
@@ -60,6 +61,23 @@ test("sanitizeBounds rejects invalid dimensions", () => {
       ),
     (error) =>
       error instanceof AppError && error.code === ErrorCodes.INVALID_BOUNDS
+  );
+});
+
+test("isSameOriginUrl keeps recruitment links inside the app", () => {
+  assert.equal(
+    isSameOriginUrl(
+      "https://www.zhipin.com/job_detail/example.html",
+      "https://www.zhipin.com/web/geek/job"
+    ),
+    true
+  );
+  assert.equal(
+    isSameOriginUrl(
+      "https://example.com/job_detail/example.html",
+      "https://www.zhipin.com/web/geek/job"
+    ),
+    false
   );
 });
 

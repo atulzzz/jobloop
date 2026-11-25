@@ -45,6 +45,9 @@ type CapturedPage = {
   description: string;
   text: string;
   characterCount: number;
+  privateUseCharacterCount: number;
+  salaryText: string;
+  salaryObfuscated: boolean;
   capturedAt: string;
 };
 

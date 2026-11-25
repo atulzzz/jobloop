@@ -36,8 +36,23 @@ function scheduleSmokeTest() {
     return;
   }
 
-  setTimeout(async () => {
+  const startedAt = Date.now();
+
+  const attemptCapture = async () => {
     try {
+      if (!browserController) {
+        throw new Error("Browser controller is unavailable.");
+      }
+
+      if (browserController.getState().isLoading) {
+        if (Date.now() - startedAt < 25000) {
+          setTimeout(attemptCapture, 500);
+          return;
+        }
+
+        throw new Error("Timed out waiting for the recruitment page.");
+      }
+
       const result = await mainWindow?.webContents.executeJavaScript(
         "window.jobloop.browser.capture()"
       );
@@ -52,16 +67,23 @@ function scheduleSmokeTest() {
           title: result.data?.title,
           url: result.data?.url,
           characterCount: result.data?.characterCount,
+          salaryText: result.data?.salaryText,
+          salaryObfuscated: result.data?.salaryObfuscated,
+          privateUseCharacterCount: result.data?.privateUseCharacterCount,
           hasText: Boolean(result.data?.text)
         })
       );
     } catch (error) {
       console.error("JOBLOOP_SMOKE_ERROR", error);
       process.exitCode = 1;
-    } finally {
       app.quit();
+      return;
     }
-  }, 5000);
+
+    app.quit();
+  };
+
+  setTimeout(attemptCapture, 1000);
 }
 
 function createWindow() {

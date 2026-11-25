@@ -47,6 +47,14 @@ export function normalizeUrl(value) {
   return url.toString();
 }
 
+export function isSameOriginUrl(candidate, current) {
+  try {
+    return new URL(candidate).origin === new URL(current).origin;
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizeBounds(value, viewport) {
   if (!value || typeof value !== "object" || !viewport) {
     throw new AppError(ErrorCodes.INVALID_BOUNDS, "页面区域参数无效。");

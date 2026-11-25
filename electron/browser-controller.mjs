@@ -2,21 +2,36 @@ import { session, shell, WebContentsView } from "electron";
 import {
   AppError,
   ErrorCodes,
+  isSameOriginUrl,
   normalizeUrl,
   sanitizeBounds
 } from "./validation.mjs";
 
 const PAGE_CAPTURE_SCRIPT = `(() => {
-  const text = (document.body?.innerText ?? "")
+  const privateUsePattern = /[\\uE000-\\uF8FF]/g;
+  const rawText = document.body?.innerText ?? "";
+  const privateUseCharacterCount =
+    (rawText.match(privateUsePattern) ?? []).length;
+  const text = rawText
     .replace(/\\u00a0/g, " ")
     .replace(/[ \\t]+/g, " ")
     .replace(/\\n{3,}/g, "\\n\\n")
-    .trim();
+    .trim()
+    .replace(privateUsePattern, "�");
 
   const metaDescription =
     document.querySelector('meta[name="description"]')?.getAttribute("content") ??
     document.querySelector('meta[property="og:description"]')?.getAttribute("content") ??
     "";
+
+  const salaryNode = document.querySelector(".salary");
+  const salaryText = (salaryNode?.textContent ?? "")
+    .replace(/\\s+/g, " ")
+    .replace(privateUsePattern, "�")
+    .trim();
+  const salaryObfuscated =
+    privateUseCharacterCount > 0 ||
+    Boolean(salaryNode?.querySelector(".zp-hide-salary"));
 
   return {
     title: document.title.trim(),
@@ -24,6 +39,9 @@ const PAGE_CAPTURE_SCRIPT = `(() => {
     description: metaDescription.trim(),
     text: text.slice(0, 50000),
     characterCount: text.length,
+    privateUseCharacterCount,
+    salaryText: salaryText.slice(0, 200),
+    salaryObfuscated,
     capturedAt: new Date().toISOString()
   };
 })()`;
@@ -89,6 +107,19 @@ export class BrowserController {
     );
 
     contents.setWindowOpenHandler(({ url }) => {
+      if (isSameOriginUrl(url, contents.getURL())) {
+        void contents.loadURL(url).catch(() => {
+          this.emitNavigationState({
+            isLoading: false,
+            title: "页面加载失败",
+            error: "无法在内嵌浏览器中打开该岗位链接。",
+            url
+          });
+        });
+
+        return { action: "deny" };
+      }
+
       try {
         normalizeUrl(url);
         void shell.openExternal(url);

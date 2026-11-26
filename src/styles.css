@@ -500,6 +500,120 @@ button {
   color: #85672e;
 }
 
+.job-confirmation {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #cdd7b9;
+  border-radius: 14px;
+  background: #f3f7ea;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #646c58;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.field em {
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #7b6a3b;
+  background: #eee4c9;
+  font-size: 8px;
+  font-style: normal;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #c9cfbd;
+  border-radius: 8px;
+  outline: 0;
+  color: #31372c;
+  background: #fffdf8;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.field input:focus,
+.field textarea:focus {
+  border-color: #839b58;
+  box-shadow: 0 0 0 3px rgba(131, 155, 88, 0.13);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: #bd6557;
+  background: #fff8f6;
+}
+
+.field small,
+.source-links small {
+  color: #a0483c;
+  font-size: 8px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.source-links {
+  display: grid;
+  gap: 7px;
+  padding-top: 2px;
+}
+
+.source-links > div {
+  display: grid;
+  gap: 3px;
+}
+
+.source-links span {
+  color: #858b7b;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.source-links code {
+  overflow: hidden;
+  color: #5d6456;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.confirm-job-button {
+  padding: 11px 13px;
+  border: 0;
+  border-radius: 9px;
+  color: #f7f5ee;
+  background: #35462b;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.confirm-job-button:hover {
+  background: #455a36;
+}
+
 .excerpt-heading {
   display: flex;
   align-items: center;

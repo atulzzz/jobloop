@@ -107,6 +107,8 @@ test("extractBossJob reads the selected job from a search page", () => {
   assert.equal(job.city, "深圳");
   assert.equal(job.salaryText, "");
   assert.equal(job.salaryStatus, "unreadable");
+  assert.equal(job.experience, "3-5年");
+  assert.equal(job.education, "本科");
   assert.deepEqual(job.skills, ["React", "TypeScript", "Node.js"]);
   assert.match(job.description, /搜索业务前端架构/);
   assert.match(job.description, /前端工程化/);

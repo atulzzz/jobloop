@@ -4,6 +4,11 @@ import {
   useRef,
   useState
 } from "react";
+import JobConfirmationForm, {
+  createJobDraft,
+  type JobDraft
+} from "./components/JobConfirmationForm";
+import { validateJobConfirmation } from "../shared/job-confirmation.mjs";
 
 const EMPTY_STATE: NavigationState = {
   url: "https://www.zhipin.com/",
@@ -37,6 +42,10 @@ function App() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const [snapshotMessage, setSnapshotMessage] = useState("");
+  const [jobDraft, setJobDraft] = useState<JobDraft | null>(null);
+  const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
+  const [confirmedJob, setConfirmedJob] = useState<JobPosting | null>(null);
+  const [confirmationMessage, setConfirmationMessage] = useState("");
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const browserSlotRef = useRef<HTMLDivElement>(null);
 
@@ -112,12 +121,64 @@ function App() {
     try {
       const page = unwrap(await window.jobloop.browser.capture());
       setCapturedPage(page);
+      setJobDraft(page.job ? createJobDraft(page.job) : null);
+      setJobErrors({});
+      setConfirmedJob(null);
+      setConfirmationMessage("");
     } catch (error) {
       setCaptureError(
         error instanceof Error ? error.message : "页面读取失败。"
       );
     } finally {
       setIsCapturing(false);
+    }
+  }
+
+  function handleJobDraftChange(field: keyof JobDraft, value: string) {
+    setJobDraft((current) =>
+      current
+        ? {
+            ...current,
+            [field]: value
+          }
+        : current
+    );
+    setConfirmedJob(null);
+    setConfirmationMessage("");
+  }
+
+  function handleConfirmJob() {
+    if (!jobDraft) {
+      return;
+    }
+
+    try {
+      const draftForValidation: JobPosting = {
+        ...jobDraft,
+        skills: jobDraft.skillsText
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean)
+      };
+      const result = validateJobConfirmation(draftForValidation, {
+        confirmedAt: new Date().toISOString()
+      });
+
+      setJobErrors(result.errors);
+
+      if (!result.valid) {
+        setConfirmedJob(null);
+        setConfirmationMessage("请先修正必填字段。");
+        return;
+      }
+
+      setJobDraft(createJobDraft(result.job));
+      setConfirmedJob(result.job);
+      setConfirmationMessage("岗位信息已确认，可以进入后续匹配与投递流程。");
+    } catch (error) {
+      setConfirmationMessage(
+        error instanceof Error ? error.message : "岗位确认失败。"
+      );
     }
   }
 
@@ -163,7 +224,7 @@ function App() {
           <span className="brand-mark">JL</span>
           <div>
             <strong>JobLoop</strong>
-            <span>D2 · IPC hardened</span>
+            <span>D4 · Job confirmation</span>
           </div>
         </div>
 
@@ -316,36 +377,27 @@ function App() {
                 </div>
               </div>
 
-              {capturedPage.job ? (
-                <section className="structured-job">
-                  <div className="structured-job-heading">
-                    <span>结构化岗位</span>
-                    <span>
-                      {capturedPage.job.pageKind === "search-result"
-                        ? "搜索页选中岗位"
-                        : "岗位详情页"}
-                    </span>
-                  </div>
-                  <strong>{capturedPage.job.title}</strong>
-                  <p>{capturedPage.job.company}</p>
-                  <div className="job-facts">
-                    <span>{capturedPage.job.city || "城市未知"}</span>
-                    <span>{capturedPage.job.experience || "经验未知"}</span>
-                    <span>{capturedPage.job.education || "学历未知"}</span>
-                    <span>
-                      {capturedPage.job.salaryStatus === "readable"
-                        ? capturedPage.job.salaryText
-                        : capturedPage.job.salaryStatus === "unreadable"
-                          ? "薪资待确认"
-                          : "薪资缺失"}
-                    </span>
-                  </div>
-                  {capturedPage.job.missingFields.length > 0 ? (
-                    <p className="missing-fields">
-                      待补充：{capturedPage.job.missingFields.join("、")}
-                    </p>
+              {jobDraft ? (
+                <>
+                  <JobConfirmationForm
+                    draft={jobDraft}
+                    errors={jobErrors}
+                    confirmed={Boolean(confirmedJob)}
+                    onChange={handleJobDraftChange}
+                    onConfirm={handleConfirmJob}
+                  />
+                  {confirmationMessage ? (
+                    <div
+                      className={
+                        confirmedJob
+                          ? "alert alert-success"
+                          : "alert alert-warning"
+                      }
+                    >
+                      {confirmationMessage}
+                    </div>
                   ) : null}
-                </section>
+                </>
               ) : capturedPage.jobError ? (
                 <div className="alert alert-warning">
                   岗位结构化失败：{capturedPage.jobError}

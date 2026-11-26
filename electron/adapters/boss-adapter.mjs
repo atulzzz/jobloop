@@ -3,6 +3,12 @@ import { createJobPosting } from "../job-model.mjs";
 import { sanitizePageText } from "../page-sanitizer.mjs";
 
 const BOSS_JOB_ID_PATTERN = /\/job_detail\/([^/?#]+)\.html/;
+const EXPERIENCE_PATTERN =
+  /^(经验不限|在校生|应届生|1年以内|1-3年|3-5年|5-10年|10年以上)$/;
+const EDUCATION_PATTERN =
+  /^(学历不限|初中及以下|中专\/中技|高中|大专|本科|硕士|博士)$/;
+const NON_SKILL_TAG_PATTERN =
+  /^(互联网(?:\/AI)?|电子商务|计算机软件|人工智能|企业服务|不接受居家办公|接受居家办公|周末双休|双休|五险一金|年终奖|带薪年假|弹性工作|餐补)$/;
 
 function getPageInfo(url) {
   let page;
@@ -156,16 +162,26 @@ export function extractBossJob({ html, url, capturedAt }) {
   const detailTags = tagTexts($, banner, ".tag-list li");
   const selectedCardTags = tagTexts($, selectedCard, ".tag-list li");
   const experience = isSearchResult
-    ? detailTags[1] ?? selectedCardTags[0] ?? ""
+    ? [...detailTags, ...selectedCardTags].find((tag) =>
+        EXPERIENCE_PATTERN.test(tag)
+      ) ?? ""
     : firstText($, banner, ".text-experiece");
   const education = isSearchResult
-    ? detailTags[2] ?? selectedCardTags[1] ?? ""
+    ? [...detailTags, ...selectedCardTags].find((tag) =>
+        EDUCATION_PATTERN.test(tag)
+      ) ?? ""
     : firstText($, banner, ".text-degree");
   const city = isSearchResult
-    ? detailTags[0] ?? ""
+    ? cleanText(banner.find(".tag-list li a").first().text())
     : firstText($, banner, ".text-city");
   const skills = isSearchResult
-    ? selectedCardTags.slice(2)
+    ? selectedCardTags.filter((tag) => {
+        return (
+          !EXPERIENCE_PATTERN.test(tag) &&
+          !EDUCATION_PATTERN.test(tag) &&
+          !NON_SKILL_TAG_PATTERN.test(tag)
+        );
+      })
     : tagTexts($, contentRoot, ".job-keyword-list li");
   const company = (
     isSearchResult

@@ -1,4 +1,6 @@
 import { session, shell, WebContentsView } from "electron";
+import fs from "node:fs/promises";
+import path from "node:path";
 import {
   AppError,
   ErrorCodes,
@@ -6,6 +8,10 @@ import {
   sanitizeBounds
 } from "./validation.mjs";
 import { sanitizePageText } from "./page-sanitizer.mjs";
+import {
+  extractBossJob,
+  isBossJobUrl
+} from "./adapters/boss-adapter.mjs";
 
 const PAGE_CAPTURE_SCRIPT = `(() => {
   const sanitizePageText = ${sanitizePageText.toString()};
@@ -38,6 +44,62 @@ const PAGE_CAPTURE_SCRIPT = `(() => {
     salaryObfuscated,
     capturedAt: new Date().toISOString()
   };
+})()`;
+
+const JOB_PAGE_HTML_SCRIPT = `(() => {
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelectorAll(
+    "script,style,link,noscript,iframe,object,embed,template"
+  ).forEach((element) => element.remove());
+  return clone.outerHTML;
+})()`;
+
+const DEBUG_SNAPSHOT_SCRIPT = `(() => {
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelectorAll(
+    "script,style,link,noscript,iframe,object,embed,template,input,textarea,select,[contenteditable='true']"
+  ).forEach((element) => element.remove());
+
+  const allowedAttributes = new Set([
+    "class",
+    "id",
+    "href",
+    "src",
+    "title",
+    "role",
+    "aria-selected",
+    "aria-label",
+    "data-jobid",
+    "data-job-id"
+  ]);
+
+  for (const element of clone.querySelectorAll("*")) {
+    for (const attribute of [...element.attributes]) {
+      if (!allowedAttributes.has(attribute.name)) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  }
+
+  for (const element of clone.querySelectorAll("[href]")) {
+    try {
+      const url = new URL(element.getAttribute("href"), location.href);
+      element.setAttribute("href", url.pathname + url.hash);
+    } catch {
+      element.removeAttribute("href");
+    }
+  }
+
+  for (const element of clone.querySelectorAll("[src]")) {
+    try {
+      const url = new URL(element.getAttribute("src"), location.href);
+      element.setAttribute("src", url.pathname);
+    } catch {
+      element.removeAttribute("src");
+    }
+  }
+
+  return clone.outerHTML;
 })()`;
 
 export class BrowserController {
@@ -211,7 +273,40 @@ export class BrowserController {
     }
 
     try {
-      return await contents.executeJavaScript(PAGE_CAPTURE_SCRIPT, true);
+      const page = await contents.executeJavaScript(PAGE_CAPTURE_SCRIPT, true);
+      let job = null;
+      let jobError = "";
+      const frames = contents.mainFrame.framesInSubtree ?? [
+        contents.mainFrame
+      ];
+
+      for (const frame of frames) {
+        if (!isBossJobUrl(frame.url)) {
+          continue;
+        }
+
+        try {
+          const html = await frame.executeJavaScript(
+            JOB_PAGE_HTML_SCRIPT,
+            true
+          );
+          job = extractBossJob({
+            html,
+            url: frame.url,
+            capturedAt: page.capturedAt
+          });
+          break;
+        } catch (error) {
+          jobError =
+            error instanceof Error ? error.message : String(error);
+        }
+      }
+
+      return {
+        ...page,
+        job,
+        jobError
+      };
     } catch {
       throw new AppError(
         ErrorCodes.CAPTURE_FAILED,
@@ -230,6 +325,66 @@ export class BrowserController {
       ...this.bounds,
       url: contents.getURL()
     };
+  }
+
+  async saveDebugSnapshot() {
+    const contents = this.assertAvailable();
+    const createdAt = new Date();
+    const stamp = createdAt.toISOString().replace(/[:.]/g, "-");
+    const directory = path.join(process.cwd(), ".tmp", "snapshots", stamp);
+    const frames = contents.mainFrame.framesInSubtree ?? [
+      contents.mainFrame
+    ];
+    const files = [];
+    const metadata = [];
+
+    await fs.mkdir(directory, { recursive: true });
+
+    for (const [index, frame] of frames.entries()) {
+      if (!frame.url.startsWith("http")) {
+        continue;
+      }
+
+      try {
+        const html = await frame.executeJavaScript(
+          DEBUG_SNAPSHOT_SCRIPT,
+          true
+        );
+        const file = path.join(
+          directory,
+          `frame-${String(index).padStart(2, "0")}.html`
+        );
+        await fs.writeFile(file, html, "utf8");
+        files.push(file);
+        metadata.push({
+          frameUrl: frame.url,
+          file: path.basename(file),
+          bytes: Buffer.byteLength(html)
+        });
+      } catch (error) {
+        metadata.push({
+          frameUrl: frame.url,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    await fs.writeFile(
+      path.join(directory, "metadata.json"),
+      JSON.stringify(
+        {
+          capturedAt: createdAt.toISOString(),
+          pageUrl: contents.getURL(),
+          pageTitle: contents.getTitle(),
+          frames: metadata
+        },
+        null,
+        2
+      ),
+      "utf8"
+    );
+
+    return { directory, files };
   }
 
   dispose() {

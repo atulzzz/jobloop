@@ -35,6 +35,8 @@ function App() {
   const [capturedPage, setCapturedPage] = useState<CapturedPage | null>(null);
   const [captureError, setCaptureError] = useState("");
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
+  const [snapshotMessage, setSnapshotMessage] = useState("");
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const browserSlotRef = useRef<HTMLDivElement>(null);
 
@@ -119,6 +121,26 @@ function App() {
     }
   }
 
+  async function handleSaveDebugSnapshot() {
+    setIsSavingSnapshot(true);
+    setSnapshotMessage("");
+
+    try {
+      const result = unwrap(
+        await window.jobloop.browser.saveDebugSnapshot()
+      );
+      setSnapshotMessage(
+        `已保存 ${result.files.length} 个 frame：${result.directory}`
+      );
+    } catch (error) {
+      setSnapshotMessage(
+        error instanceof Error ? error.message : "页面快照保存失败。"
+      );
+    } finally {
+      setIsSavingSnapshot(false);
+    }
+  }
+
   async function handleBrowserAction(
     action: () => Promise<IpcResult<NavigationState>>
   ) {
@@ -178,6 +200,19 @@ function App() {
           >
             ↻
           </button>
+
+          {appInfo?.debugSnapshotEnabled ? (
+            <div className="debug-snapshot">
+              <button
+                type="button"
+                disabled={isSavingSnapshot || navigation.isLoading}
+                onClick={() => void handleSaveDebugSnapshot()}
+              >
+                {isSavingSnapshot ? "保存中…" : "保存页面调试快照"}
+              </button>
+              {snapshotMessage ? <p>{snapshotMessage}</p> : null}
+            </div>
+          ) : null}
 
           <form className="address-form" onSubmit={handleNavigate}>
             <span
@@ -280,6 +315,42 @@ function App() {
                   <strong>{formatTime(capturedPage.capturedAt)}</strong>
                 </div>
               </div>
+
+              {capturedPage.job ? (
+                <section className="structured-job">
+                  <div className="structured-job-heading">
+                    <span>结构化岗位</span>
+                    <span>
+                      {capturedPage.job.pageKind === "search-result"
+                        ? "搜索页选中岗位"
+                        : "岗位详情页"}
+                    </span>
+                  </div>
+                  <strong>{capturedPage.job.title}</strong>
+                  <p>{capturedPage.job.company}</p>
+                  <div className="job-facts">
+                    <span>{capturedPage.job.city || "城市未知"}</span>
+                    <span>{capturedPage.job.experience || "经验未知"}</span>
+                    <span>{capturedPage.job.education || "学历未知"}</span>
+                    <span>
+                      {capturedPage.job.salaryStatus === "readable"
+                        ? capturedPage.job.salaryText
+                        : capturedPage.job.salaryStatus === "unreadable"
+                          ? "薪资待确认"
+                          : "薪资缺失"}
+                    </span>
+                  </div>
+                  {capturedPage.job.missingFields.length > 0 ? (
+                    <p className="missing-fields">
+                      待补充：{capturedPage.job.missingFields.join("、")}
+                    </p>
+                  ) : null}
+                </section>
+              ) : capturedPage.jobError ? (
+                <div className="alert alert-warning">
+                  岗位结构化失败：{capturedPage.jobError}
+                </div>
+              ) : null}
 
               {capturedPage.description ? (
                 <p className="page-description">

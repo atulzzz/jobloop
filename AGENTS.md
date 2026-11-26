@@ -68,5 +68,6 @@ Do not invent metrics, employment, responsibility or provenance.
 
 - D1 technical feasibility: completed and accepted.
 - D2 application shell and IPC hardening: completed and accepted.
-- Next effective slice: JobPosting model, BOSS Adapter, salary/field fallback,
-  and owner-written acceptance tests.
+- D3 JobPosting and BOSS detail/search adapters: completed and accepted.
+- Next effective slice: editable job confirmation form, salary/field correction,
+  and replacing the read-only structured card with a clear review workflow.

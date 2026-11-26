@@ -37,6 +37,7 @@ type AppInfo = {
   platform: string;
   sessionPartition: string;
   ipcProtocolVersion: number;
+  debugSnapshotEnabled: boolean;
 };
 
 type CapturedPage = {
@@ -48,6 +49,28 @@ type CapturedPage = {
   privateUseCharacterCount: number;
   salaryText: string;
   salaryObfuscated: boolean;
+  job: JobPosting | null;
+  jobError: string;
+  capturedAt: string;
+};
+
+type JobPosting = {
+  schemaVersion: number;
+  pageKind: "detail" | "search-result" | "unknown";
+  source: string;
+  sourceJobId: string;
+  sourceUrl: string;
+  pageUrl: string;
+  title: string;
+  company: string;
+  city: string;
+  salaryText: string;
+  salaryStatus: "readable" | "unreadable" | "missing";
+  experience: string;
+  education: string;
+  description: string;
+  skills: string[];
+  missingFields: string[];
   capturedAt: string;
 };
 
@@ -66,6 +89,12 @@ interface Window {
       setBounds: (
         bounds: BrowserBounds
       ) => Promise<IpcResult<BrowserBounds & { url: string }>>;
+      saveDebugSnapshot: () => Promise<
+        IpcResult<{
+          directory: string;
+          files: string[];
+        }>
+      >;
       onNavigationState: (
         callback: (state: NavigationState) => void
       ) => () => void;

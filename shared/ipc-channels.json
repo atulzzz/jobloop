@@ -7,5 +7,6 @@
   "browserReload": "browser:reload",
   "browserCapture": "browser:capture",
   "browserSetBounds": "browser:set-bounds",
+  "browserSaveDebugSnapshot": "browser:save-debug-snapshot",
   "browserNavigationState": "browser:navigation-state"
 }

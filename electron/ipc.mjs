@@ -67,4 +67,7 @@ export function registerIpc({
   handle(channels.browserSetBounds, (bounds) =>
     getBrowser().setBounds(bounds)
   );
+  handle(channels.browserSaveDebugSnapshot, () =>
+    getBrowser().saveDebugSnapshot()
+  );
 }

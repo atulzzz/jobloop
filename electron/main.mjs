@@ -53,6 +53,19 @@ function scheduleSmokeTest() {
         throw new Error("Timed out waiting for the recruitment page.");
       }
 
+      const jobPanelReady =
+        await browserController.view.webContents.executeJavaScript(
+          `Boolean(
+            document.querySelector(".job-detail-box") ||
+            document.querySelector(".job-banner")
+          )`
+        );
+
+      if (!jobPanelReady && Date.now() - startedAt < 25000) {
+        setTimeout(attemptCapture, 500);
+        return;
+      }
+
       const result = await mainWindow?.webContents.executeJavaScript(
         "window.jobloop.browser.capture()"
       );
@@ -70,6 +83,10 @@ function scheduleSmokeTest() {
           salaryText: result.data?.salaryText,
           salaryObfuscated: result.data?.salaryObfuscated,
           privateUseCharacterCount: result.data?.privateUseCharacterCount,
+          jobTitle: result.data?.job?.title,
+          jobSourceId: result.data?.job?.sourceJobId,
+          jobSalaryStatus: result.data?.job?.salaryStatus,
+          jobMissingFields: result.data?.job?.missingFields,
           hasText: Boolean(result.data?.text)
         })
       );
@@ -136,7 +153,8 @@ app.whenReady().then(() => {
       appVersion: app.getVersion(),
       electronVersion: process.versions.electron,
       platform: process.platform,
-      sessionPartition: SESSION_PARTITION
+      sessionPartition: SESSION_PARTITION,
+      debugSnapshotEnabled: !app.isPackaged
     })
   });
 

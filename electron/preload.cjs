@@ -11,6 +11,7 @@ const channels = Object.freeze({
   browserReload: "browser:reload",
   browserCapture: "browser:capture",
   browserSetBounds: "browser:set-bounds",
+  browserSaveDebugSnapshot: "browser:save-debug-snapshot",
   browserNavigationState: "browser:navigation-state"
 });
 
@@ -28,6 +29,8 @@ contextBridge.exposeInMainWorld("jobloop", {
     capture: () => ipcRenderer.invoke(channels.browserCapture),
     setBounds: (bounds) =>
       ipcRenderer.invoke(channels.browserSetBounds, bounds),
+    saveDebugSnapshot: () =>
+      ipcRenderer.invoke(channels.browserSaveDebugSnapshot),
     onNavigationState: (callback) => {
       const listener = (_event, state) => callback(state);
       ipcRenderer.on(channels.browserNavigationState, listener);
